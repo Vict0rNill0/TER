@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Moveable Tic Tac Toe</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;600&display=swap");
+
+      :root {
+        --bg-1: #f8efe4;
+        --bg-2: #f4c9a9;
+        --bg-3: #f4efe9;
+        --ink: #2f2a26;
+        --muted: rgba(47, 42, 38, 0.65);
+        --accent-x: #f46b45;
+        --accent-o: #2c7a7b;
+        --board: rgba(255, 255, 255, 0.78);
+        --line: rgba(47, 42, 38, 0.35);
+        --node: rgba(255, 255, 255, 0.85);
+        --node-stroke: rgba(47, 42, 38, 0.2);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
+        background: radial-gradient(circle at top, #fff6ea 0%, var(--bg-1) 35%, var(--bg-2) 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.5), transparent 55%),
+          radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.4), transparent 60%),
+          radial-gradient(circle at 30% 80%, rgba(255, 255, 255, 0.45), transparent 55%);
+        opacity: 0.7;
+        pointer-events: none;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .arena {
+        display: grid;
+        gap: 18px;
+        place-items: center;
+        width: min(92vw, 92vh);
+      }
+
+      .controls {
+        display: grid;
+        place-items: center;
+      }
+
+      .board {
+        position: relative;
+        width: min(92vmin, 900px);
+        aspect-ratio: 1;
+        background: var(--board);
+        border-radius: 28px;
+        box-shadow: 0 20px 45px rgba(47, 42, 38, 0.15);
+        backdrop-filter: blur(6px);
+        animation: board-in 0.65s ease-out;
+      }
+
+      .board svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      .board line {
+        stroke: var(--line);
+        stroke-width: 2.4;
+        stroke-linecap: round;
+      }
+
+      #win-line {
+        stroke-width: 6.5;
+        stroke-linecap: round;
+        opacity: 0;
+      }
+
+      .starter-badge {
+        position: absolute;
+        left: 50%;
+        top: 30%;
+        transform: translate(-50%, -50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 12px 22px rgba(47, 42, 38, 0.18);
+        font-size: 0.95rem;
+        color: var(--ink);
+        opacity: 0;
+        z-index: 1;
+        pointer-events: none;
+        transform: translate(-50%, -50%) translateY(8px);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+
+      .starter-badge.show {
+        opacity: 1;
+        transform: translate(-50%, -50%) translateY(0);
+      }
+
+      .starter-badge img {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(47, 42, 38, 0.2);
+      }
+
+      .node {
+        position: absolute;
+        left: calc(var(--x) * 1%);
+        top: calc(var(--y) * 1%);
+        width: clamp(54px, 10vw, 110px);
+        height: clamp(54px, 10vw, 110px);
+        border-radius: 50%;
+        border: 2px solid var(--node-stroke);
+        background: var(--node);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        z-index: 2;
+        transform: translate(-50%, -50%);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+      }
+
+      .node.has-piece {
+        background-color: rgba(255, 255, 255, 0.95);
+      }
+
+      .node:hover {
+        transform: translate(-50%, -50%) scale(1.05);
+        box-shadow: 0 10px 18px rgba(47, 42, 38, 0.12);
+      }
+
+      .node.player-x {
+        border-color: rgba(244, 107, 69, 0.65);
+      }
+
+      .node.player-o {
+        border-color: rgba(44, 122, 123, 0.65);
+      }
+
+      .node.selected {
+        animation: pulse 1.1s infinite;
+        box-shadow: 0 0 0 4px rgba(244, 107, 69, 0.35);
+      }
+
+      .node.player-o.selected {
+        box-shadow: 0 0 0 4px rgba(44, 122, 123, 0.35);
+      }
+
+      .node.hint {
+        box-shadow: 0 0 0 3px rgba(47, 42, 38, 0.25);
+        transform: translate(-50%, -50%) scale(1.02);
+      }
+
+      button#reset {
+        border: none;
+        padding: 12px 22px;
+        border-radius: 999px;
+        background: #2f2a26;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button#reset:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 22px rgba(47, 42, 38, 0.22);
+      }
+
+      @keyframes board-in {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.07);
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      @keyframes winner-dance {
+        0% {
+          transform: rotate(-2deg) translateY(0);
+        }
+        50% {
+          transform: rotate(2deg) translateY(-6px);
+        }
+        100% {
+          transform: rotate(-2deg) translateY(0);
+        }
+      }
+
+      .winner-modal {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(47, 42, 38, 0.3);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 2;
+      }
+
+      .winner-modal.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .winner-card {
+        background: rgba(255, 255, 255, 0.82);
+        border-radius: 24px;
+        padding: 26px;
+        width: min(86vw, 360px);
+        box-shadow: 0 24px 45px rgba(47, 42, 38, 0.28);
+        display: grid;
+        gap: 16px;
+        text-align: center;
+      }
+
+      .winner-card img {
+        width: min(70vw, 260px);
+        height: auto;
+        max-height: 40vh;
+        border-radius: 12px;
+        object-fit: contain;
+        margin: 0 auto;
+        border: 3px solid rgba(47, 42, 38, 0.2);
+        background: #fff;
+        animation: winner-dance 1.2s ease-in-out infinite;
+        transform-origin: center;
+      }
+
+      .winner-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .winner-actions {
+        display: grid;
+        place-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="arena">
+        <div class="board" id="board">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <line x1="10" y1="10" x2="90" y2="10" />
+            <line x1="10" y1="50" x2="90" y2="50" />
+            <line x1="10" y1="90" x2="90" y2="90" />
+            <line x1="10" y1="10" x2="10" y2="90" />
+            <line x1="50" y1="10" x2="50" y2="90" />
+            <line x1="90" y1="10" x2="90" y2="90" />
+            <line x1="10" y1="10" x2="50" y2="50" />
+            <line x1="50" y1="50" x2="90" y2="90" />
+            <line x1="90" y1="10" x2="50" y2="50" />
+            <line x1="50" y1="50" x2="10" y2="90" />
+            <line id="win-line" x1="0" y1="0" x2="0" y2="0" />
+          </svg>
+
+          <button class="node" data-index="0" style="--x: 10; --y: 10" aria-label="Node 1"></button>
+          <button class="node" data-index="1" style="--x: 50; --y: 10" aria-label="Node 2"></button>
+          <button class="node" data-index="2" style="--x: 90; --y: 10" aria-label="Node 3"></button>
+          <button class="node" data-index="3" style="--x: 10; --y: 50" aria-label="Node 4"></button>
+          <button class="node" data-index="4" style="--x: 50; --y: 50" aria-label="Node 5"></button>
+          <button class="node" data-index="5" style="--x: 90; --y: 50" aria-label="Node 6"></button>
+          <button class="node" data-index="6" style="--x: 10; --y: 90" aria-label="Node 7"></button>
+          <button class="node" data-index="7" style="--x: 50; --y: 90" aria-label="Node 8"></button>
+          <button class="node" data-index="8" style="--x: 90; --y: 90" aria-label="Node 9"></button>
+
+          <div class="starter-badge" id="starter-badge" aria-live="polite">
+            <img id="starter-img" alt="" />
+            <span id="starter-text"></span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="winner-modal" id="winner-modal" role="dialog" aria-modal="true" aria-labelledby="winner-text">
+      <div class="winner-card">
+        <img id="winner-img" alt="" />
+        <div class="winner-title" id="winner-text"></div>
+        <div class="winner-actions">
+          <button id="reset" type="button">Reiniciar</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const nodes = Array.from(document.querySelectorAll(".node"));
+      const resetButton = document.getElementById("reset");
+      const winnerModal = document.getElementById("winner-modal");
+      const winnerImg = document.getElementById("winner-img");
+      const winnerText = document.getElementById("winner-text");
+      const starterBadge = document.getElementById("starter-badge");
+      const starterImg = document.getElementById("starter-img");
+      const starterText = document.getElementById("starter-text");
+      const winLine = document.getElementById("win-line");
+      const pieceImages = {
+        X: "papa.png",
+        O: "neo.png",
+      };
+      const nodeCoords = [
+        { x: 10, y: 10 },
+        { x: 50, y: 10 },
+        { x: 90, y: 10 },
+        { x: 10, y: 50 },
+        { x: 50, y: 50 },
+        { x: 90, y: 50 },
+        { x: 10, y: 90 },
+        { x: 50, y: 90 },
+        { x: 90, y: 90 },
+      ];
+
+      const lines = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6],
+      ];
+
+      const adjacency = [
+        [1, 3, 4],
+        [0, 2, 4],
+        [1, 5, 4],
+        [0, 4, 6],
+        [0, 1, 2, 3, 5, 6, 7, 8],
+        [2, 4, 8],
+        [3, 7, 4],
+        [4, 6, 8],
+        [5, 7, 4],
+      ];
+
+      const maxPieces = 3;
+      let board = Array(9).fill(null);
+      let currentPlayer = "O";
+      let phase = "placing";
+      let selectedIndex = null;
+      let winner = null;
+      let winningLine = null;
+      let nextStarter = "O";
+      let placedCount = { X: 0, O: 0 };
+
+      function resetGame() {
+        board = Array(9).fill(null);
+        currentPlayer = nextStarter;
+        phase = "placing";
+        selectedIndex = null;
+        winner = null;
+        winningLine = null;
+        placedCount = { X: 0, O: 0 };
+        render();
+      }
+
+      function switchPlayer() {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+      }
+
+      function findWinningLine(player) {
+        for (const line of lines) {
+          if (line.every((index) => board[index] === player)) {
+            return line;
+          }
+        }
+        return null;
+      }
+
+      function updateWinLine() {
+        if (!winningLine) {
+          winLine.style.opacity = "0";
+          return;
+        }
+        const start = nodeCoords[winningLine[0]];
+        const end = nodeCoords[winningLine[2]];
+        winLine.setAttribute("x1", start.x);
+        winLine.setAttribute("y1", start.y);
+        winLine.setAttribute("x2", end.x);
+        winLine.setAttribute("y2", end.y);
+        winLine.style.stroke = winner === "X" ? "var(--accent-x)" : "var(--accent-o)";
+        winLine.style.opacity = "1";
+      }
+
+      function updateWinnerModal() {
+        if (!winner) {
+          winnerModal.classList.remove("show");
+          return;
+        }
+        const winnerName = winner === "X" ? "Papa" : "Neo";
+        winnerImg.src = pieceImages[winner];
+        winnerImg.alt = winnerName;
+        winnerText.textContent = `${winnerName} ha ganado`;
+        winnerModal.classList.add("show");
+      }
+
+      function updateStarterBadge() {
+        const totalPlaced = placedCount.X + placedCount.O;
+        if (winner || totalPlaced !== 0) {
+          starterBadge.classList.remove("show");
+          return;
+        }
+        const starterName = currentPlayer === "X" ? "Papa" : "Neo";
+        starterImg.src = pieceImages[currentPlayer];
+        starterImg.alt = starterName;
+        starterText.textContent = `${starterName} empieza esta ronda`;
+        starterBadge.classList.add("show");
+      }
+
+      function updateHints() {
+        nodes.forEach((node) => node.classList.remove("hint"));
+        if (winner || phase !== "moving" || selectedIndex === null) {
+          return;
+        }
+        adjacency[selectedIndex].forEach((index) => {
+          if (board[index] === null) {
+            nodes[index].classList.add("hint");
+          }
+        });
+      }
+
+      function render() {
+        nodes.forEach((node, index) => {
+          const piece = board[index];
+          node.classList.toggle("player-x", piece === "X");
+          node.classList.toggle("player-o", piece === "O");
+          node.classList.toggle("selected", index === selectedIndex);
+          node.classList.toggle("has-piece", piece !== null);
+          node.style.backgroundImage = piece ? `url("${pieceImages[piece]}")` : "none";
+          node.setAttribute(
+            "aria-label",
+            piece ? `Node ${index + 1}, ${piece === "X" ? "Papa" : "Neo"}` : `Node ${index + 1}`
+          );
+        });
+        updateHints();
+        updateWinLine();
+        updateWinnerModal();
+        updateStarterBadge();
+      }
+
+      function handlePlacement(index) {
+        if (board[index] !== null) {
+          return;
+        }
+
+        if (placedCount[currentPlayer] >= maxPieces) {
+          return;
+        }
+
+        board[index] = currentPlayer;
+        placedCount[currentPlayer] += 1;
+
+        const line = findWinningLine(currentPlayer);
+        if (line) {
+          winner = currentPlayer;
+          winningLine = line;
+          nextStarter = winner === "X" ? "O" : "X";
+          selectedIndex = null;
+          render();
+          return;
+        }
+
+        if (placedCount.X === maxPieces && placedCount.O === maxPieces) {
+          phase = "moving";
+        }
+
+        switchPlayer();
+        render();
+      }
+
+      function handleMovement(index) {
+        if (selectedIndex === null) {
+          if (board[index] === currentPlayer) {
+            selectedIndex = index;
+            render();
+          }
+          return;
+        }
+
+        if (index === selectedIndex) {
+          selectedIndex = null;
+          render();
+          return;
+        }
+
+        if (board[index] === currentPlayer) {
+          selectedIndex = index;
+          render();
+          return;
+        }
+
+        if (board[index] === null && adjacency[selectedIndex].includes(index)) {
+          board[index] = currentPlayer;
+          board[selectedIndex] = null;
+          selectedIndex = null;
+
+          const line = findWinningLine(currentPlayer);
+          if (line) {
+            winner = currentPlayer;
+            winningLine = line;
+            nextStarter = winner === "X" ? "O" : "X";
+            render();
+            return;
+          }
+
+          switchPlayer();
+          render();
+          return;
+        }
+      }
+
+      nodes.forEach((node) => {
+        node.addEventListener("click", () => {
+          if (winner) {
+            return;
+          }
+
+          const index = Number(node.dataset.index);
+          if (phase === "placing") {
+            handlePlacement(index);
+          } else {
+            handleMovement(index);
+          }
+        });
+      });
+
+      resetButton.addEventListener("click", resetGame);
+      render();
+    </script>
+  </body>
+</html>
