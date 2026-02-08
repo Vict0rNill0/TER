@@ -2,7 +2,7 @@
 
 Juego clasico de Tres en raya con fichas movibles (Papa vs Neo).
 
-Demo en vivo: https://vict0rtilla.github.io/TER/
+Demo en vivo: https://victornillo.com/TER/ 
 
 ## Como jugar
 
